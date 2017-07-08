@@ -9,7 +9,7 @@
 // 1. npm install body-parser express request
 // 2. Download and install ngrok from https://ngrok.com/download
 // 3. ./ngrok http 8445
-// 4. WIT_TOKEN=your_access_token FB_APP_SECRET=your_app_secret FB_PAGE_TOKEN=your_page_token node examples/messenger.js
+// 4. WIT_TOKEN=your_access_token/ FB_APP_SECRET=your_app_secret/ FB_PAGE_TOKEN=your_page_token node examples/messenger.js
 // 5. Subscribe your page to the Webhooks using verify_token and `https://<your_ngrok_io>/webhook` as callback URL.
 // 6. Talk to your bot on Messenger!
 
@@ -132,9 +132,9 @@ const actions = {
 
 // Setting up our bot
 const wit = new Wit({
-  accessToken: WIT_TOKEN,
+  accessToken: X4AS2VFAWVNRF6Y2F4KHTOY6LCKDT25Q,
   actions,
-  logger: new log.Logger(log.INFO)
+ // logger: new log.Logger(log.INFO)
 });
 
 // Starting our webserver and putting it all together
@@ -221,6 +221,37 @@ app.post('/webhook', (req, res) => {
   res.sendStatus(200);
 });
 
+/////////////////////////////////////////////////
+router.post('/', function (req, res) {
+messaging_events = req.body.entry[0].messaging;
+for (i = 0; i < messaging_events.length; i++) {
+event = req.body.entry[0].messaging[i];
+sender = event.sender.id;
+var sessionId = findOrCreateSession(sender);
+if (event.message && event.message.text) {
+text = event.message.text;
+// Handle a text message from this sender
+wit.runActions(
+sessionId, // the user's current session
+text, // the user's message
+sessions[sessionId].context // the user's current session state
+).then((context) => {
+// Our bot did everything it has to do.
+// Now it's waiting for further messages to proceed.
+console.log('Waiting for next user messages');
+// Updating the user's current session state
+sessions[sessionId].context = context;
+})
+.catch((err) => {
+console.error('Oops! Got an error from Wit: ', err.stack || err);
+})
+}
+}
+res.sendStatus(200);
+});
+
+/////////////////////////////////////////////////////////////////////
+
 /*
  * Verify that the callback came from Facebook. Using the App Secret from
  * the App Dashboard, we can verify the signature that is sent with each
@@ -250,6 +281,7 @@ function verifyRequestSignature(req, res, buf) {
     }
   }
 }
+
 
 app.listen(PORT);
 console.log('Listening on :' + PORT + '...');
